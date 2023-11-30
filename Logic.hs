@@ -12,11 +12,11 @@ import Data.List
 import Types
 
 validMove :: (Int, Int) -> UltimateBoard -> Bool
-validMove (big, small) (UltimateBoard boards (lastBig, lastSmall) freeCells) =
+validMove (big, small) (UltimateBoard boards _ freeCells) =
   inBounds big
     && inBounds small
-    && (lastBig == -1 || big == lastSmall || boardWon (boards !! lastSmall) /= Ongoing)
-    && cellAt (big, small) (UltimateBoard boards (lastBig, lastSmall) freeCells) == Types.Empty
+    && big `elem` freeCells
+    && cellAt (big, small) (UltimateBoard boards (-1, -1) freeCells) == Types.Empty
 
 inBounds :: Int -> Bool
 inBounds n = n >= 1 && n < 10
