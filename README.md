@@ -1,6 +1,17 @@
 # UTTTSolver
 Ultimate Tic-Tac-Toe Solver in Haskell
 
+## Executing
+Compile with:
+```
+ghc *hs
+```
+Then run:
+```
+./Game
+```
+
+
 # Project Proposal
 
 ### Authors
