@@ -10,7 +10,7 @@ main = do
   putStrLn "Welcome to Ultimate Tic-Tac-Toe!"
   putStrLn "Link to the rules:"
   putStrLn "https://en.wikipedia.org/wiki/Ultimate_tic-tac-toe#Rules"
-  putStrLn "Numbering system for choosing moves on both small and large board:\n+-------+\n| 1 2 3 |\n| 4 5 6 |\n| 7 8 9 |\n+-------+\nTo undo the selection of a large board cell, enter 10 as your small board cell."
+  putStrLn "Numbering system for choosing moves on both small and large board:\n+-------+\n| 1 2 3 |\n| 4 5 6 |\n| 7 8 9 |\n+-------+\nTo undo the selection of a large board cell, enter 10."
   putStrLn $ displayUltimateBoard emptyUltimateBoard
   playerTurn X emptyUltimateBoard
 
@@ -21,7 +21,7 @@ playerTurn player board = do
   move <- promptMove board
   case move of
     Just validMove -> processMove player board validMove
-    Nothing -> putStrLn "Invalid move, please try again." >> playerTurn player board
+    Nothing -> putStrLn "Invalid move, please try again.\n" >> playerTurn player board
 
 processMove :: Cell -> UltimateBoard -> (Int, Int) -> IO ()
 processMove player board move = do
@@ -35,9 +35,9 @@ processMove player board move = do
 
 promptMove :: UltimateBoard -> IO (Maybe (Int, Int))
 promptMove board = do
-  putStrLn "Enter the index of the large board cell (1-9):"
+  putStrLn "Index of the large board cell (1-9):"
   bigBoard <- getValidInput
-  putStrLn "Enter the index of the small board cell (1-9):"
+  putStrLn "Index of the small board cell (1-9):"
   smallBoard <- getValidInput
   let move = (bigBoard, smallBoard)
   return $ if validMove move board then Just move else Nothing
