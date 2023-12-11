@@ -12,11 +12,11 @@ import Data.List
 import Types
 
 validMove :: (Int, Int) -> UltimateBoard -> Bool
-validMove (big, small) (UltimateBoard boards _ freeCells) =
+validMove (big, small) (UltimateBoard boards _ freeCells _) =
   inBounds big
     && inBounds small
     && big `elem` freeCells
-    && cellAt (big, small) (UltimateBoard boards (-1, -1) freeCells) == Types.Empty
+    && cellAt (big, small) (UltimateBoard boards (-1, -1) freeCells []) == Types.Empty
 
 inBounds :: Int -> Bool
 inBounds n = n >= 1 && n < 10
@@ -26,7 +26,7 @@ lastMoveToBoard (-1, -1) = -1
 lastMoveToBoard (_, small) = small
 
 winner :: UltimateBoard -> GameOutcome
-winner (UltimateBoard boards _ _) =
+winner (UltimateBoard boards _ _ _) =
   let boardOutcomes = map boardWon boards
       rows = chunksOf 3 boardOutcomes
       cols = transpose rows
@@ -81,7 +81,7 @@ getDiag 0 board = [board !! (i * 4) | i <- [0, 1, 2]] -- Main diagonal
 getDiag 1 board = [board !! (i * 2 + 2) | i <- [0, 1, 2]] -- Off diagonal
 
 cellAt :: (Int, Int) -> UltimateBoard -> Cell
-cellAt (big, small) (UltimateBoard bs _ _) =
+cellAt (big, small) (UltimateBoard bs _ _ _) =
   let boardIndex = big - 1
       cellIndex = small - 1
       selectedBoard = bs !! boardIndex
