@@ -30,13 +30,14 @@ getFirstPlayerChoice = do
 playerTurn :: Cell -> UltimateBoard -> IO ()
 playerTurn player board
   | player == O = aiTurn board
+  -- | player == O = humanTurn player board
   | otherwise = humanTurn player board
 
 aiTurn :: UltimateBoard -> IO ()
 aiTurn board = do
   putStrLn "AI is making a move..."
-  let numIterations = 1000 -- Edit this to indicate how long you want the bot to take
-  move <- mcts board numIterations
+  let depth = 3 -- Edit this to indicate how long you want the bot to take
+  move <- minimax board depth
   processMove O board move
 
 humanTurn :: Cell -> UltimateBoard -> IO ()

@@ -11,6 +11,14 @@ where
 import Data.List
 import Types
 
+
+gameIsOver :: UltimateBoard -> Bool
+gameIsOver board =
+  case winner board of
+    Win _ -> True
+    Draw  -> True
+    Ongoing -> False
+
 validMove :: (Int, Int) -> UltimateBoard -> Bool
 validMove (big, small) (UltimateBoard boards _ freeCells _) =
   inBounds big
