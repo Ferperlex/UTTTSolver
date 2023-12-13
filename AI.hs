@@ -20,6 +20,43 @@ data MCTSNode = MCTSNode
     simulations :: Int
   }
 
+data MinimaxNode = MinimaxNode {
+  gameState :: UltimateBoard,
+  move :: Maybe (Int, Int),
+  children :: [MinimaxNode]
+}
+
+minimax :: UltimateBoard -> Int -> IO (Int, Int)
+minimax board depth = do
+  traceIO "Starting Minimax..."
+  let rootNode = MinimaxNode { gameState = board, move = Nothing, children = [] }
+  let bestMoveResult = bestMove rootNode depth X True
+  traceIO $ "Best move: " ++ show bestMoveResult
+  return bestMoveResult
+
+bestMove :: MinimaxNode -> Int -> Cell -> Bool -> (Int, Int)
+bestMove node depth player isMaximizingPlayer = 
+  let moves = getPossibleMoves (gameState node)
+      scoredMoves = map (\m -> (m, minimaxValue (updateBoard (gameState node) m player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer))) moves
+  in fst $ if isMaximizingPlayer then maximumBy (comparing snd) scoredMoves else minimumBy (comparing snd) scoredMoves
+
+
+minimaxValue :: UltimateBoard -> Int -> Cell -> Bool -> Int
+minimaxValue board depth player isMaximizingPlayer
+  | depth == 0 || gameIsOver board = evaluate board
+  | isMaximizingPlayer = maximum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) False | move <- getPossibleMoves board]
+  | otherwise = minimum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) True | move <- getPossibleMoves board]
+
+
+evaluate :: UltimateBoard -> Int
+evaluate board =
+  case winner board of
+    Win X -> 10   -- Assuming AI is X and a win is positive
+    Win O -> -10  -- Assuming AI is X and a loss is negative
+    Draw  -> 0    -- A draw might be considered neutral
+    Ongoing -> evaluateBoardState board  -- For non-terminal states
+
+
 mcts :: UltimateBoard -> Int -> IO (Int, Int)
 mcts board numIterations = do
   traceIO "Starting MCTS..."
