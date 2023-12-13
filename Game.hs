@@ -75,9 +75,7 @@ getValidInput = do
     Just value -> return value
     Nothing -> putStrLn "Invalid input, please enter a number." >> getValidInput
 
-nextPlayer :: Cell -> Cell
-nextPlayer X = O
-nextPlayer O = X
+
 
 printWinner :: GameOutcome -> IO ()
 printWinner outcome = case outcome of

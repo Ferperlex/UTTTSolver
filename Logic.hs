@@ -5,12 +5,20 @@ module Logic
     cellAt,
     chunksOf,
     boardWon,
+    checkWin,
+    gameIsOver,
+    nextPlayer,
   )
 where
 
 import Data.List
 import Types
 
+
+
+nextPlayer :: Cell -> Cell
+nextPlayer X = O
+nextPlayer O = X
 
 gameIsOver :: UltimateBoard -> Bool
 gameIsOver board =
