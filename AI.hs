@@ -7,20 +7,14 @@ import Data.Functor qualified
 import Data.IORef
 -- import Data.List (maximumBy)
 import Data.Maybe
-import Debug.Trace
-import Logic (checkWin, gameIsOver, winner, nextPlayer)
+import Debug.Trace 
+import Logic (checkWin, gameIsOver, winner, nextPlayer, currentBoardIndex)
 import System.Random (randomRIO)
 import Types
 import Data.List (maximumBy, minimumBy)
 import Data.Ord (comparing)
 
--- data MCTSNode = MCTSNode
---   { gameState :: UltimateBoard,
---     parent :: Maybe (IORef MCTSNode),
---     children :: [IORef MCTSNode], -- Now a list of IORefs
---     wins :: Int,
---     simulations :: Int
---   }
+
 
 data MinimaxNode = MinimaxNode {
   gameState :: UltimateBoard,
@@ -33,222 +27,106 @@ minimax :: UltimateBoard -> Int -> IO (Int, Int)
 minimax board depth = do
   traceIO "Starting Minimax..."
   let rootNode = MinimaxNode { gameState = board, move = Nothing, children = [] }
+  traceIO "DEBUG A"
   let bestMoveResult = bestMove rootNode depth X True
-  traceIO $ "Best move: " ++ show bestMoveResult
+  traceIO $ "Best move: " ++ show bestMoveResult -- code does not reach here!
+  traceIO $ "Minimax returned: " ++ show bestMoveResult  
   return bestMoveResult
+
 
 bestMove :: MinimaxNode -> Int -> Cell -> Bool -> (Int, Int)
 bestMove node depth player isMaximizingPlayer = 
-  let moves = possibleMoves (gameState node)
+  let moves = trace "DEBUG B" $ possibleMoves (gameState node)
       scoredMoves = map (\m -> (m, minimaxValue (updateBoard (gameState node) m player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer))) moves
   in fst $ if isMaximizingPlayer then maximumBy (comparing snd) scoredMoves else minimumBy (comparing snd) scoredMoves
 
 
 minimaxValue :: UltimateBoard -> Int -> Cell -> Bool -> Int
-minimaxValue board depth player isMaximizingPlayer
-  | depth == 0 || gameIsOver board = evaluate board
-  | isMaximizingPlayer = maximum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) False | move <- possibleMoves board]
-  | otherwise = minimum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) True | move <- possibleMoves board]
+minimaxValue board depth player isMaximizingPlayer =
+  trace "DEBUG C" $  -- Debug print statement
+    if depth == 0 || gameIsOver board
+    then evaluate board  -- No need to round here
+    else if isMaximizingPlayer
+         then maximum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) False | move <- possibleMoves board]
+         else minimum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) True | move <- possibleMoves board]
+
+
 
 
 evaluate :: UltimateBoard -> Int
 evaluate board =
-  case winner board of
-    Win X -> -10  -- AI is 'O', so X winning is negative
-    Win O -> 10   -- AI is 'O', so O winning is positive
-    Draw  -> 0    -- A draw is considered neutral
-    Ongoing -> evaluateBoardState board  -- For non-terminal states
+  trace "DEBUG D" $
+  let currentIndex = currentBoardIndex board
+  in case winner board of
+       Win X -> -10
+       Win O -> 10
+       Draw  -> 0
+       Ongoing -> round (evaluateGame board currentIndex)  -- Round the result of evaluateGame
 
 
 
-evaluateBoardState :: UltimateBoard -> Int
-evaluateBoardState (UltimateBoard boards _ _ _) =
-  let boardScores = map evaluateSingleBoard boards
-  in sum boardScores
 
-evaluateSingleBoard :: Board -> Int
-evaluateSingleBoard board
-  | checkWin X board = -3 -- AI is 'O', so X winning a board is negative
-  | checkWin O board = 3  -- AI is 'O', so O winning a board is positive
-  | otherwise = evaluatePotential board
-
-
-evaluatePotential :: Board -> Int
-evaluatePotential board =
-  let xCount = length $ filter (== X) board
-      oCount = length $ filter (== O) board
-  in oCount - xCount -- More O's than X's is good for AI, and vice versa
+evaluateGame :: UltimateBoard -> Int -> Double
+evaluateGame (UltimateBoard boards _ _ _) currentBoard =
+  trace "DEBUG E" $
+    let evaluatorMul = [1.4, 1.0, 1.4, 1.0, 1.75, 1.0, 1.4, 1.0, 1.4]
+        evals = trace "DEBUG evals" $ zipWith (\board mul -> realEvaluateSquare (boardToInts board) * 1.5 * mul - fromIntegral (checkWinCondition (boardToInts board)) * mul) boards evaluatorMul
+        currentBoardEval = trace "DEBUG currentBoardEval" $ realEvaluateSquare (boardToInts (boards !! currentBoard)) * evaluatorMul !! currentBoard
+        mainBd = trace "DEBUG mainBd" $ map (fromIntegral . checkWinCondition . boardToInts) boards -- problematic line
+        mainBdEval = trace "DEBUG mainBdEval" $ realEvaluateSquare mainBd * 150
+        winConditionEval = trace "DEBUG winConditionEval" $ fromIntegral (checkWinCondition mainBd) * (-5000)
+        result = sum evals + currentBoardEval + mainBdEval + winConditionEval
+    in trace ("DEBUG F: " ++ show result) result
 
 
 
--- mcts :: UltimateBoard -> Int -> IO (Int, Int)
--- mcts board numIterations = do
---   traceIO "Starting MCTS..."
---   rootNodeRef <- newIORef MCTSNode {gameState = board, parent = Nothing, children = [], wins = 0, simulations = 0}
 
---   replicateM_ numIterations $ do
---     promisingNodeRef <- selectPromisingNode rootNodeRef
---     expandNode promisingNodeRef
---     childNodesRefs <- readIORef promisingNodeRef >>= \node -> return (children node)
 
---     forM_ childNodesRefs $ \childNodeRef -> do
---       childNode <- readIORef childNodeRef
---       outcome <- simulateRandomPlayout childNode
---       backpropagation childNodeRef outcome
---   rootNode <- readIORef rootNodeRef
---   (bestMoveResult, winChance) <- bestMove rootNode
---   traceIO $ "Best move: " ++ show bestMoveResult ++ ", Winning chance: " ++ show winChance
---   return bestMoveResult
 
--- simulateRandomPlayout :: MCTSNode -> IO GameOutcome
--- simulateRandomPlayout node = do
---   let board = gameState node
---   if isTerminal board
---     then return $ winner board
---     else do
---       randomMove <- getRandomMove board
---       let newBoard = updateBoard board randomMove (getNextPlayer board)
---       simulateRandomPlayout
---         MCTSNode
---           { gameState = newBoard,
---             parent = Nothing,
---             children = [],
---             wins = 0,
---             simulations = 0
---           }
+-- Helper function to convert a board of Cells to a board of Ints
+boardToInts :: Board -> [Int]
+boardToInts = map cellToInt
 
--- isTerminal :: UltimateBoard -> Bool
--- isTerminal board = case winner board of
---   Ongoing -> False
---   _ -> True
+-- Convert Cell to Int
+cellToInt :: Cell -> Int
+cellToInt Empty = 0
+cellToInt X = 1
+cellToInt O = -1
 
--- getRandomMove :: UltimateBoard -> IO (Int, Int)
--- getRandomMove board = do
---   let moves = possibleMoves board
---   index <- randomRIO (0, length moves - 1)
---   return (moves !! index)
 
--- getNextPlayer :: UltimateBoard -> Cell
--- getNextPlayer ultimateBoard@(UltimateBoard _ (lastBig, lastSmall) _ _)
---   | lastBig == -1 = X
---   | otherwise = alternatePlayer $ cellAt (lastBig, lastSmall) ultimateBoard
---   where
---     alternatePlayer X = O
---     alternatePlayer O = X
+realEvaluateSquare :: [Int] -> Double
+realEvaluateSquare pos =
+  let points = [0.2, 0.17, 0.2, 0.17, 0.22, 0.17, 0.2, 0.17, 0.2]
+      evaluation = sum $ zipWith (*) (map fromIntegral pos) points
+      lineSum a = sum [if line == a * 3 then 6 else 0 | line <- lines]
+      lineSumDiag a = sum [if diag == a * 3 then 7 else 0 | diag <- diagonals]
+      twoInLine a = sum [if twoLine == 2 * a && oneEmpty == -a then 9 else 0 | (twoLine, oneEmpty) <- twoInLines]
+      lines = [sumLine 0 1 2, sumLine 3 4 5, sumLine 6 7 8, sumLine 0 3 6, sumLine 1 4 7, sumLine 2 5 8]
+      diagonals = [sumLine 0 4 8, sumLine 2 4 6]
+      twoInLines = [(sumLine i j k, pos !! l) | (i, j, k, l) <- twoInLineIndices]
+      twoInLineIndices = [(0, 1, 2, 2), (1, 2, 0, 0), (0, 2, 1, 1),
+                          (3, 4, 5, 5), (4, 5, 3, 3), (3, 5, 4, 4),
+                          (6, 7, 8, 8), (7, 8, 6, 6), (6, 8, 7, 7),
+                          (0, 3, 6, 6), (3, 6, 0, 0), (0, 6, 3, 3),
+                          (1, 4, 7, 7), (4, 7, 1, 1), (1, 7, 4, 4),
+                          (2, 5, 8, 8), (5, 8, 2, 2), (2, 8, 5, 5),
+                          (0, 4, 8, 8), (4, 8, 0, 0), (0, 8, 4, 4),
+                          (2, 4, 6, 6), (4, 6, 2, 2), (2, 6, 4, 4)]
+      sumLine i j k = pos !! i + pos !! j + pos !! k
+  in evaluation - lineSum 1 - lineSumDiag 1 + twoInLine (-1) + lineSum (-1) + lineSumDiag (-1) - twoInLine 1
 
--- expandNode :: IORef MCTSNode -> IO ()
--- expandNode nodeRef = do
---   node <- readIORef nodeRef
---   let currentBoard = gameState node
---   let currentPlayer = getNextPlayer currentBoard
---   let possibleMovesList = possibleMoves currentBoard
 
---   childNodesRefs <- forM possibleMovesList $ \move -> do
---     let newBoard = updateBoard currentBoard move currentPlayer
---     newIORef
---       MCTSNode
---         { gameState = newBoard,
---           parent = Just nodeRef,
---           children = [],
---           wins = 0,
---           simulations = 0
---         }
---   writeIORef nodeRef $ node {children = childNodesRefs}
+-- THis is where the error is mostly likely to be
+checkWinCondition :: [Int] -> Int
+checkWinCondition board
+  | length board < 9 = error "Board size is less than 9"  -- or handle this case appropriately
+  | otherwise =
+      let check a = any (== a * 3) [sumLine 0 1 2, sumLine 3 4 5, sumLine 6 7 8, sumLine 0 3 6, sumLine 1 4 7, sumLine 2 5 8, sumLine 0 4 8, sumLine 2 4 6]
+          sumLine i j k = board !! i + board !! j + board !! k
+      in if check 1 then 1 else if check (-1) then -1 else 0
 
--- createChildNode :: UltimateBoard -> (Int, Int) -> Cell -> IORef MCTSNode -> MCTSNode
--- createChildNode board move player parentRef =
---   let newBoard = updateBoard board move player
---    in MCTSNode
---         { gameState = newBoard,
---           parent = Just parentRef,
---           children = [],
---           wins = 0,
---           simulations = 0
---         }
 
--- selectPromisingNode :: IORef MCTSNode -> IO (IORef MCTSNode)
--- selectPromisingNode nodeRef = do
---   node <- readIORef nodeRef
---   if null (children node)
---     then return nodeRef
---     else do
---       bestChildRef <- maxUCTNode (children node) >>= maybe (return nodeRef) return
---       selectPromisingNode bestChildRef
 
--- maxUCTNode :: [IORef MCTSNode] -> IO (Maybe (IORef MCTSNode))
--- maxUCTNode [] = trace "maxUCTNode called with empty list" $ return Nothing
--- maxUCTNode nodeRefs = do
---   nodeWithUctValues <- forM nodeRefs $ \nodeRef -> do
---     uctValueResult <- uctValue nodeRef
---     return (nodeRef, uctValueResult)
---   return $ Just $ fst $ maximumBy (compare `on` snd) nodeWithUctValues
 
--- uctValue :: IORef MCTSNode -> IO Double
--- uctValue nodeRef = do
---   node <- readIORef nodeRef
---   parentSimulations <- case parent node of
---     Just parentRef -> readIORef parentRef Data.Functor.<&> simulations
---     Nothing -> return 0
---   let w = fromIntegral (wins node)
---   let n = fromIntegral (simulations node)
---   let t = fromIntegral parentSimulations
---   let c = sqrt 2 -- Exploration parameter
---   return $ if n == 0 then 1 / 0 else w / n + c * sqrt (log t / n)
 
--- totalSimulations :: Maybe MCTSNode -> Int
--- totalSimulations Nothing = 0
--- totalSimulations (Just node) = simulations node
 
--- backpropagation :: IORef MCTSNode -> GameOutcome -> IO ()
--- backpropagation = backpropagateHelper
-
--- backpropagateHelper :: IORef MCTSNode -> GameOutcome -> IO ()
--- backpropagateHelper nodeRef outcome = do
---   node <- readIORef nodeRef
---   let newWins = if outcome == Win (playerOfNode node) then wins node + 1 else wins node
---   let newNode = node {wins = newWins, simulations = simulations node + 1}
---   writeIORef nodeRef newNode
---   case parent newNode of
---     Just parentNodeRef -> backpropagateHelper parentNodeRef outcome
---     Nothing -> return ()
-
--- playerOfNode :: MCTSNode -> Cell
--- playerOfNode node = getNextPlayer (gameState node)
-
--- bestMove :: MCTSNode -> IO ((Int, Int), Double)
--- bestMove rootNode = do
---   childRefsAndNodes <- mapM (\ref -> readIORef ref >>= \node -> return (ref, node)) (children rootNode)
---   let (bestChildRef, bestChildNode) = maximumBy (compare `on` (simulations . snd)) childRefsAndNodes
-
---   let winChance =
---         if simulations bestChildNode > 0
---           then fromIntegral (wins bestChildNode) / fromIntegral (simulations bestChildNode)
---           else 0
---   move <- extractMoveFromNode bestChildRef
---   return (move, winChance)
-
--- extractMoveFromNode :: IORef MCTSNode -> IO (Int, Int)
--- extractMoveFromNode nodeRef = do
---   node <- readIORef nodeRef
---   case parent node of
---     Just parentRef -> do
---       parentNode <- readIORef parentRef
---       return $ findDifference (gameState parentNode) (gameState node)
---     Nothing -> error "Root node does not have a move associated with it."
-
--- findDifference :: UltimateBoard -> UltimateBoard -> (Int, Int)
--- findDifference oldBoard newBoard = findDiffRec (zip oldPositions newPositions)
---   where
---     oldPositions = concatMap (boardPositions oldBoard) [1 .. 9]
---     newPositions = concatMap (boardPositions newBoard) [1 .. 9]
-
---     findDiffRec :: [(((Int, Int), Cell), ((Int, Int), Cell))] -> (Int, Int)
---     findDiffRec [] = error "No difference found between boards."
---     findDiffRec (((pos, oldCell), (_, newCell)) : rest)
---       | oldCell /= newCell = pos
---       | otherwise = findDiffRec rest
-
--- boardPositions :: UltimateBoard -> Int -> [((Int, Int), Cell)]
--- boardPositions (UltimateBoard boards _ _ _) big =
---   let board = boards !! (big - 1)
---    in [((big, small), board !! (small - 1)) | small <- [1 .. 9]]

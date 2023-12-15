@@ -8,6 +8,7 @@ module Logic
     checkWin,
     gameIsOver,
     nextPlayer,
+    currentBoardIndex,
   )
 where
 
@@ -15,6 +16,8 @@ import Data.List
 import Types
 
 
+currentBoardIndex :: UltimateBoard -> Int
+currentBoardIndex (UltimateBoard _ (big, _) _ _) = big
 
 nextPlayer :: Cell -> Cell
 nextPlayer X = O
