@@ -16,8 +16,8 @@ main = do
 
   putStrLn $ displayUltimateBoard emptyUltimateBoard
   if firstPlayer
-    then playerTurn X emptyUltimateBoard
-    else aiTurn emptyUltimateBoard
+    then humanTurn O emptyUltimateBoard -- Player as O
+    else aiTurn emptyUltimateBoard -- AI as X
 
 getFirstPlayerChoice :: IO Bool
 getFirstPlayerChoice = do
@@ -29,25 +29,15 @@ getFirstPlayerChoice = do
 
 playerTurn :: Cell -> UltimateBoard -> IO ()
 playerTurn player board
-  | player == O = aiTurn board
-  -- | player == O = humanTurn player board
-  | otherwise = humanTurn player board
+  | player == X = humanTurn player board -- Human as X
+  | otherwise = aiTurn board -- AI as O
 
 aiTurn :: UltimateBoard -> IO ()
 aiTurn board = do
   putStrLn "AI is making a move..."
-  let depth = 3 -- Edit this to indicate how long you want the bot to take
+  let depth = 5 -- Edit this to indicate how long you want the bot to take
   move <- minimax board depth
-  processMove O board move
-
-humanTurn :: Cell -> UltimateBoard -> IO ()
-humanTurn player board = do
-  putStrLn $ "Player " ++ show player ++ ", it's your move!"
-  putStrLn $ "Eligible large cells for your move: " ++ show (freeLargeCells board)
-  move <- promptMove board
-  case move of
-    Just validMove -> processMove player board validMove
-    Nothing -> putStrLn "Invalid move, please try again.\n" >> humanTurn player board
+  processMove X board move -- AI as X
 
 processMove :: Cell -> UltimateBoard -> (Int, Int) -> IO ()
 processMove player board move = do
@@ -57,7 +47,19 @@ processMove player board move = do
   case winner newBoard of
     Win player -> printWinner (Win player)
     Draw -> printWinner Draw
-    Ongoing -> playerTurn (nextPlayer player) newBoard
+    Ongoing ->
+      if player == X
+        then humanTurn O newBoard -- Next turn is human's as O
+        else aiTurn newBoard -- Next turn is AI's as X
+
+humanTurn :: Cell -> UltimateBoard -> IO ()
+humanTurn player board = do
+  putStrLn $ "Player " ++ show player ++ ", it's your move!"
+  putStrLn $ "Eligible large cells for your move: " ++ show (freeLargeCells board)
+  move <- promptMove board
+  case move of
+    Just validMove -> processMove player board validMove
+    Nothing -> putStrLn "Invalid move, please try again.\n" >> humanTurn player board
 
 promptMove :: UltimateBoard -> IO (Maybe (Int, Int))
 promptMove board = do
@@ -74,8 +76,6 @@ getValidInput = do
   case readMaybe input of
     Just value -> return value
     Nothing -> putStrLn "Invalid input, please enter a number." >> getValidInput
-
-
 
 printWinner :: GameOutcome -> IO ()
 printWinner outcome = case outcome of
