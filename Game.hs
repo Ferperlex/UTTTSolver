@@ -35,7 +35,7 @@ playerTurn player board
 aiTurn :: UltimateBoard -> IO ()
 aiTurn board = do
   putStrLn "AI is making a move..."
-  let depth = 5 -- Edit this to indicate how long you want the bot to take
+  let depth = 7 -- Edit this to indicate how long you want the bot to take
   move <- minimax board depth
   processMove X board move -- AI as X
 

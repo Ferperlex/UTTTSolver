@@ -33,16 +33,30 @@ minimax board depth = do
 bestMove :: MinimaxNode -> Int -> Cell -> Bool -> (Int, Int)
 bestMove node depth player isMaximizingPlayer =
   let moves = possibleMoves (gameState node)
+      alpha = -1 / 0  -- Negative infinity
+      beta = 1 / 0    -- Positive infinity
       scoredMoves =
-        [ (m, eval) | m <- moves, let eval = minimaxValue (updateBoard (gameState node) m player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer), trace ("Move: " ++ show m ++ " Evaluation: " ++ show eval) True
+        [ (m, eval) | m <- moves, let eval = minimaxValue (updateBoard (gameState node) m player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer) alpha beta, trace ("Move: " ++ show m ++ " Evaluation: " ++ show eval) True
         ]
    in fst $ if isMaximizingPlayer then maximumBy (comparing snd) scoredMoves else minimumBy (comparing snd) scoredMoves
 
-minimaxValue :: UltimateBoard -> Int -> Cell -> Bool -> Double
-minimaxValue board depth player isMaximizingPlayer
+
+minimaxValue :: UltimateBoard -> Int -> Cell -> Bool -> Double -> Double -> Double
+minimaxValue board depth player isMaximizingPlayer alpha beta
   | depth == 0 || gameIsOver board = evaluate board
-  | isMaximizingPlayer = maximum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) False | move <- possibleMoves board]
-  | otherwise = minimum [minimaxValue (updateBoard board move player) (depth - 1) (nextPlayer player) True | move <- possibleMoves board]
+  | isMaximizingPlayer = goMax alpha moves
+  | otherwise = goMin beta moves
+  where
+    moves = possibleMoves board
+    goMax alpha [] = alpha
+    goMax alpha (m:ms) =
+      let alpha' = max alpha (minimaxValue (updateBoard board m player) (depth - 1) (nextPlayer player) False alpha beta)
+      in if alpha' >= beta then alpha' else goMax alpha' ms
+    goMin beta [] = beta
+    goMin beta (m:ms) =
+      let beta' = min beta (minimaxValue (updateBoard board m player) (depth - 1) (nextPlayer player) True alpha beta)
+      in if alpha >= beta' then beta' else goMin beta' ms
+
 
 evaluate :: UltimateBoard -> Double
 evaluate board =
