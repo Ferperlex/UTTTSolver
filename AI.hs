@@ -1,18 +1,12 @@
 module AI where
 
 import Board
-import Control.Monad (forM, forM_, replicateM_)
-import Data.Function (on)
-import Data.Functor qualified
-import Data.IORef
--- import Data.List (maximumBy)
-
+import Control.Parallel.Strategies
 import Data.List (maximumBy, minimumBy)
-import Data.Maybe
 import Data.Ord (comparing)
+import Data.Time
 import Debug.Trace
-import Logic (checkWin, currentBoardIndex, gameIsOver, nextPlayer, winner)
-import System.Random (randomRIO)
+import Logic (currentBoardIndex, gameIsOver, nextPlayer, winner)
 import Types
 
 data MinimaxNode = MinimaxNode
@@ -23,40 +17,48 @@ data MinimaxNode = MinimaxNode
 
 minimax :: UltimateBoard -> Int -> IO (Int, Int)
 minimax board depth = do
-  traceIO "Starting Minimax..."
+  startTime <- getCurrentTime
   let rootNode = MinimaxNode {gameState = board, move = Nothing, children = []}
   let bestMoveResult = bestMove rootNode depth X True
-  traceIO $ "Best move: " ++ show bestMoveResult -- code does not reach here!
-  traceIO $ "Minimax returned: " ++ show bestMoveResult
+  putStrLn $ "AI moves to: " ++ show bestMoveResult
+  endTime <- getCurrentTime
+  let timeTaken = diffUTCTime endTime startTime
+  putStrLn $ "Time taken for move: " ++ show timeTaken
   return bestMoveResult
 
 bestMove :: MinimaxNode -> Int -> Cell -> Bool -> (Int, Int)
 bestMove node depth player isMaximizingPlayer =
   let moves = possibleMoves (gameState node)
-      alpha = -1 / 0  -- Negative infinity
-      beta = 1 / 0    -- Positive infinity
-      scoredMoves =
-        [ (m, eval) | m <- moves, let eval = minimaxValue (updateBoard (gameState node) m player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer) alpha beta, trace ("Move: " ++ show m ++ " Evaluation: " ++ show eval) True
-        ]
-   in fst $ if isMaximizingPlayer then maximumBy (comparing snd) scoredMoves else minimumBy (comparing snd) scoredMoves
+      alpha = -1 / 0 -- Negative infinity
+      beta = 1 / 0 -- Positive infinity
+      scoredMoves = parMap rpar (evaluateMoveWithTrace alpha beta) moves
+   in fst $
+        if isMaximizingPlayer
+          then maximumBy (comparing snd) scoredMoves
+          else minimumBy (comparing snd) scoredMoves
+  where
+    evaluateMoveWithTrace alpha beta move =
+      let eval = minimaxValue (updateBoard (gameState node) move player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer) alpha beta
+       in trace (moveTraceString (move, eval)) (move, eval)
 
+    moveTraceString (m, eval) =
+      "Processed Move: " ++ show m ++ " Evaluation: " ++ show eval
 
 minimaxValue :: UltimateBoard -> Int -> Cell -> Bool -> Double -> Double -> Double
 minimaxValue board depth player isMaximizingPlayer alpha beta
   | depth == 0 || gameIsOver board = evaluate board
-  | isMaximizingPlayer = goMax alpha moves
-  | otherwise = goMin beta moves
+  | isMaximizingPlayer = goMax alpha beta (possibleMoves board)
+  | otherwise = goMin alpha beta (possibleMoves board)
   where
-    moves = possibleMoves board
-    goMax alpha [] = alpha
-    goMax alpha (m:ms) =
-      let alpha' = max alpha (minimaxValue (updateBoard board m player) (depth - 1) (nextPlayer player) False alpha beta)
-      in if alpha' >= beta then alpha' else goMax alpha' ms
-    goMin beta [] = beta
-    goMin beta (m:ms) =
-      let beta' = min beta (minimaxValue (updateBoard board m player) (depth - 1) (nextPlayer player) True alpha beta)
-      in if alpha >= beta' then beta' else goMin beta' ms
+    goMax alpha beta [] = alpha
+    goMax alpha beta (m : ms) =
+      let newAlpha = max alpha (minimaxValue (updateBoard board m player) (depth - 1) (nextPlayer player) False alpha beta)
+       in if newAlpha >= beta then newAlpha else goMax newAlpha beta ms
 
+    goMin alpha beta [] = beta
+    goMin alpha beta (m : ms) =
+      let newBeta = min beta (minimaxValue (updateBoard board m player) (depth - 1) (nextPlayer player) True alpha beta)
+       in if alpha >= newBeta then newBeta else goMin alpha newBeta ms
 
 evaluate :: UltimateBoard -> Double
 evaluate board =
@@ -78,11 +80,9 @@ evaluateGame (UltimateBoard boards _ _ _) currentBoard =
       result = sum evals + currentBoardEval + mainBdEval + winConditionEval
    in result
 
--- Helper function to convert a board of Cells to a board of Ints
 boardToInts :: Board -> [Int]
 boardToInts = map cellToInt
 
--- Convert Cell to Int
 cellToInt :: Cell -> Int
 cellToInt Empty = 0
 cellToInt X = 1
@@ -127,28 +127,22 @@ realEvaluateSquare pos =
       sumLine i j k = pos !! i + pos !! j + pos !! k
    in evaluation - lineSum 1 - lineSumDiag 1 + twoInLine (-1) + lineSum (-1) + lineSumDiag (-1) - twoInLine 1
 
--- Function to check if a player has won on a given board
--- 1 represents X, -1 represents O, 0 represents no win
 checkWinCondition :: [Int] -> Int
 checkWinCondition board
   | checkWinFor 1 = 1
   | checkWinFor (-1) = -1
   | otherwise = 0
   where
-    -- Check win for a specific player (X or O)
     checkWinFor player =
       any (all (== player)) (rows ++ cols ++ diags)
-    -- Define rows, columns, and diagonals
     rows = chunksOf 3 board
     cols = transpose rows
     diags = [[head board, board !! 4, board !! 8], [board !! 2, board !! 4, board !! 6]]
 
--- Helper function to chunk a list into sublists of a given size
 chunksOf :: Int -> [a] -> [[a]]
 chunksOf _ [] = []
 chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
--- Helper function for transposing a 2D list (i.e., matrix)
 transpose :: [[a]] -> [[a]]
 transpose ([] : _) = []
 transpose x = map head x : transpose (map tail x)

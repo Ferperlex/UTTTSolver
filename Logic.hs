@@ -15,7 +15,6 @@ where
 import Data.List
 import Types
 
-
 currentBoardIndex :: UltimateBoard -> Int
 currentBoardIndex (UltimateBoard _ (big, _) _ _) = big
 
@@ -27,7 +26,7 @@ gameIsOver :: UltimateBoard -> Bool
 gameIsOver board =
   case winner board of
     Win _ -> True
-    Draw  -> True
+    Draw -> True
     Ongoing -> False
 
 validMove :: (Int, Int) -> UltimateBoard -> Bool
@@ -70,13 +69,6 @@ boardWon board
   | checkWin X board = Win X
   | checkWin O board = Win O
   | Types.Empty `notElem` board = Draw
-  | otherwise = Ongoing
-
-ultimateBoardWon :: [GameOutcome] -> GameOutcome
-ultimateBoardWon outcomes
-  | Win X `elem` outcomes = Win X
-  | Win O `elem` outcomes = Win O
-  | all (== Draw) outcomes = Draw
   | otherwise = Ongoing
 
 checkWin :: Cell -> Board -> Bool
