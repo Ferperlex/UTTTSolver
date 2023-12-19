@@ -5,11 +5,34 @@ module Logic
     cellAt,
     chunksOf,
     boardWon,
+    checkWin,
+    gameIsOver,
+    nextPlayer,
+    currentBoardIndex,
   )
 where
 
-import Data.List
+import Data.List (transpose)
 import Types
+  ( Board,
+    Cell (..),
+    GameOutcome (..),
+    UltimateBoard (UltimateBoard),
+  )
+
+currentBoardIndex :: UltimateBoard -> Int
+currentBoardIndex (UltimateBoard _ (big, _) _ _) = big
+
+nextPlayer :: Cell -> Cell
+nextPlayer X = O
+nextPlayer O = X
+
+gameIsOver :: UltimateBoard -> Bool
+gameIsOver board =
+  case winner board of
+    Win _ -> True
+    Draw -> True
+    Ongoing -> False
 
 validMove :: (Int, Int) -> UltimateBoard -> Bool
 validMove (big, small) (UltimateBoard boards _ freeCells _) =
@@ -53,13 +76,6 @@ boardWon board
   | Types.Empty `notElem` board = Draw
   | otherwise = Ongoing
 
-ultimateBoardWon :: [GameOutcome] -> GameOutcome
-ultimateBoardWon outcomes
-  | Win X `elem` outcomes = Win X
-  | Win O `elem` outcomes = Win O
-  | all (== Draw) outcomes = Draw
-  | otherwise = Ongoing
-
 checkWin :: Cell -> Board -> Bool
 checkWin player board =
   or $
@@ -77,8 +93,8 @@ getCol :: Int -> Board -> [Cell]
 getCol colNum board = [board !! (i * 3 + colNum) | i <- [0, 1, 2]]
 
 getDiag :: Int -> Board -> [Cell]
-getDiag 0 board = [board !! (i * 4) | i <- [0, 1, 2]] -- Main diagonal
-getDiag 1 board = [board !! (i * 2 + 2) | i <- [0, 1, 2]] -- Off diagonal
+getDiag 0 board = [board !! (i * 4) | i <- [0, 1, 2]]
+getDiag 1 board = [board !! (i * 2 + 2) | i <- [0, 1, 2]]
 
 cellAt :: (Int, Int) -> UltimateBoard -> Cell
 cellAt (big, small) (UltimateBoard bs _ _ _) =

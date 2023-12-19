@@ -9,8 +9,13 @@ module Board
 where
 
 import Data.List (intercalate, intersperse)
-import Logic
+import Logic (GameOutcome (Ongoing), boardWon, chunksOf)
 import Types
+  ( Board,
+    Cell (..),
+    GameOutcome (Ongoing),
+    UltimateBoard (..),
+  )
 
 emptyBoard :: Board
 emptyBoard = replicate 9 Empty
