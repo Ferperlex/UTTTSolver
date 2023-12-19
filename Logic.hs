@@ -88,8 +88,8 @@ getCol :: Int -> Board -> [Cell]
 getCol colNum board = [board !! (i * 3 + colNum) | i <- [0, 1, 2]]
 
 getDiag :: Int -> Board -> [Cell]
-getDiag 0 board = [board !! (i * 4) | i <- [0, 1, 2]] -- Main diagonal
-getDiag 1 board = [board !! (i * 2 + 2) | i <- [0, 1, 2]] -- Off diagonal
+getDiag 0 board = [board !! (i * 4) | i <- [0, 1, 2]]
+getDiag 1 board = [board !! (i * 2 + 2) | i <- [0, 1, 2]]
 
 cellAt :: (Int, Int) -> UltimateBoard -> Cell
 cellAt (big, small) (UltimateBoard bs _ _ _) =

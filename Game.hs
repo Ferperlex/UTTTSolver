@@ -18,7 +18,6 @@ main = do
   let initialHistory = [initialBoard]
   humanTurn O initialBoard initialHistory
 
--- Updated aiTurn function to include history as a parameter
 aiTurn :: UltimateBoard -> [UltimateBoard] -> IO ()
 aiTurn board history = do
   putStrLn "AI is making a move..."
@@ -27,7 +26,6 @@ aiTurn board history = do
   let newBoard = updateBoard board move X
   processMove X newBoard move (newBoard : history)
 
--- Update playerTurn function to pass the history
 playerTurn :: Cell -> UltimateBoard -> [UltimateBoard] -> IO ()
 playerTurn player board history
   | player == X = humanTurn player board history
