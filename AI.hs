@@ -1,13 +1,19 @@
 module AI where
 
 import Board
-import Control.Parallel.Strategies
+  ( Board,
+    Cell (..),
+    UltimateBoard (UltimateBoard, possibleMoves),
+    updateBoard,
+  )
+import Control.DeepSeq (deepseq)
+import Control.Parallel.Strategies (parMap, rpar)
 import Data.List (maximumBy, minimumBy)
 import Data.Ord (comparing)
-import Data.Time
-import Debug.Trace
+import Data.Time (diffUTCTime, getCurrentTime)
+import Debug.Trace ()
 import Logic (currentBoardIndex, gameIsOver, nextPlayer, winner)
-import Types
+import Types (GameOutcome (Draw, Ongoing, Win))
 
 data MinimaxNode = MinimaxNode
   { gameState :: UltimateBoard,
@@ -31,18 +37,15 @@ bestMove node depth player isMaximizingPlayer =
   let moves = possibleMoves (gameState node)
       alpha = -1 / 0 -- Negative infinity
       beta = 1 / 0 -- Positive infinity
-      scoredMoves = parMap rpar (evaluateMoveWithTrace alpha beta) moves
+      scoredMoves = parMap rpar (evaluateMove alpha beta) moves
    in fst $
         if isMaximizingPlayer
           then maximumBy (comparing snd) scoredMoves
           else minimumBy (comparing snd) scoredMoves
   where
-    evaluateMoveWithTrace alpha beta move =
+    evaluateMove alpha beta move =
       let eval = minimaxValue (updateBoard (gameState node) move player) (depth - 1) (nextPlayer player) (not isMaximizingPlayer) alpha beta
-       in trace (moveTraceString (move, eval)) (move, eval)
-
-    moveTraceString (m, eval) =
-      "Processed Move: " ++ show m ++ " Evaluation: " ++ show eval
+       in move `deepseq` eval `deepseq` (move, eval)
 
 minimaxValue :: UltimateBoard -> Int -> Cell -> Bool -> Double -> Double -> Double
 minimaxValue board depth player isMaximizingPlayer alpha beta

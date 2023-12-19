@@ -12,8 +12,13 @@ module Logic
   )
 where
 
-import Data.List
+import Data.List (transpose)
 import Types
+  ( Board,
+    Cell (..),
+    GameOutcome (..),
+    UltimateBoard (UltimateBoard),
+  )
 
 currentBoardIndex :: UltimateBoard -> Int
 currentBoardIndex (UltimateBoard _ (big, _) _ _) = big

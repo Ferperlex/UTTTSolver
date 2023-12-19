@@ -1,10 +1,20 @@
 module Main (main) where
 
-import AI
+import AI (minimax)
 import Board
-import Logic
+  ( Cell (..),
+    UltimateBoard (UltimateBoard, boards, freeLargeCells),
+    displayUltimateBoard,
+    emptyUltimateBoard,
+    updateBoard,
+  )
+import Logic (GameOutcome (..), validMove, winner)
 import Text.Read (readMaybe)
 import Types
+  ( Cell (..),
+    GameOutcome (..),
+    UltimateBoard (UltimateBoard, boards, freeLargeCells),
+  )
 
 main :: IO ()
 main = do
