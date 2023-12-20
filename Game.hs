@@ -16,30 +16,75 @@ import Types
     UltimateBoard (UltimateBoard, boards, freeLargeCells),
   )
 
+-- main :: IO ()
+-- main = do
+--   putStrLn "Welcome to Ultimate Tic-Tac-Toe!"
+--   putStrLn "Link to the rules: https://en.wikipedia.org/wiki/Ultimate_tic-tac-toe#Rules"
+--   putStrLn "Numbering system for choosing moves on both small and large board:\n+-------+\n| 1 2 3 |\n| 4 5 6 |\n| 7 8 9 |\n+-------+\nTo undo the selection of a large board cell, enter 10.\nAt any moment in time, type 'Undo' to undo your previous move."
+--   putStrLn "AI is making a move..."
+--   let initialBoard = updateBoard emptyUltimateBoard (5, 5) X
+--   putStrLn $ displayUltimateBoard initialBoard
+--   putStrLn "Best move: (5,5)"
+--   let initialHistory = [initialBoard]
+--   humanTurn O initialBoard initialHistory
+
+-- aiTurn :: UltimateBoard -> [UltimateBoard] -> IO ()
+-- aiTurn board history = do
+--   putStrLn "AI is making a move..."
+--   let depth = 8
+--   move <- minimax board depth
+--   let newBoard = updateBoard board move X
+--   processMove X newBoard move (newBoard : history)
+
 main :: IO ()
 main = do
-  putStrLn "Welcome to Ultimate Tic-Tac-Toe!"
+  putStrLn "Welcome to Ultimate Tic-Tac-Toe AI vs AI!"
   putStrLn "Link to the rules: https://en.wikipedia.org/wiki/Ultimate_tic-tac-toe#Rules"
-  putStrLn "Numbering system for choosing moves on both small and large board:\n+-------+\n| 1 2 3 |\n| 4 5 6 |\n| 7 8 9 |\n+-------+\nTo undo the selection of a large board cell, enter 10.\nAt any moment in time, type 'Undo' to undo your previous move."
-  putStrLn "AI is making a move..."
   let initialBoard = updateBoard emptyUltimateBoard (5, 5) X
   putStrLn $ displayUltimateBoard initialBoard
-  putStrLn "Best move: (5,5)"
+  putStrLn "Initial AI move: (5,5)"
   let initialHistory = [initialBoard]
-  humanTurn O initialBoard initialHistory
+  aiTurn O initialBoard initialHistory -- Start with player O
 
-aiTurn :: UltimateBoard -> [UltimateBoard] -> IO ()
-aiTurn board history = do
-  putStrLn "AI is making a move..."
+aiTurn :: Cell -> UltimateBoard -> [UltimateBoard] -> IO ()
+aiTurn player board history = do
+  putStrLn $ "AI " ++ show player ++ " is making a move..."
   let depth = 8
   move <- minimax board depth
-  let newBoard = updateBoard board move X
-  processMove X newBoard move (newBoard : history)
+  let newBoard = updateBoard board move player
+  putStrLn $ displayUltimateBoard newBoard
+  case winner newBoard of
+    Win _ -> printWinner (Win player)
+    Draw -> printWinner Draw
+    Ongoing -> aiTurn (nextPlayer player) newBoard (newBoard : history)
+
+-- Define nextPlayer if not already defined
+nextPlayer :: Cell -> Cell
+nextPlayer X = O
+nextPlayer O = X
+
+-- playerTurn :: Cell -> UltimateBoard -> [UltimateBoard] -> IO ()
+-- playerTurn player board history
+--   | player == X = humanTurn player board history
+--   | otherwise = aiTurn board history
+
+-- processMove :: Cell -> UltimateBoard -> (Int, Int) -> [UltimateBoard] -> IO ()
+-- processMove player board move history = do
+--   let newBoard = updateBoard board move player
+--   putStrLn $ displayUltimateBoard newBoard
+--   putStrLn ""
+--   case winner newBoard of
+--     Win player -> printWinner (Win player)
+--     Draw -> printWinner Draw
+--     Ongoing ->
+--       if player == X
+--         then humanTurn O newBoard history
+--         else aiTurn newBoard history
 
 playerTurn :: Cell -> UltimateBoard -> [UltimateBoard] -> IO ()
 playerTurn player board history
   | player == X = humanTurn player board history
-  | otherwise = aiTurn board history
+  | otherwise = aiTurn player board history -- Pass the current player
 
 processMove :: Cell -> UltimateBoard -> (Int, Int) -> [UltimateBoard] -> IO ()
 processMove player board move history = do
@@ -52,7 +97,7 @@ processMove player board move history = do
     Ongoing ->
       if player == X
         then humanTurn O newBoard history
-        else aiTurn newBoard history
+        else aiTurn O newBoard (newBoard : history) -- Call aiTurn with the next player
 
 humanTurn :: Cell -> UltimateBoard -> [UltimateBoard] -> IO ()
 humanTurn player board history = do

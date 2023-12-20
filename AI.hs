@@ -67,8 +67,8 @@ evaluate :: UltimateBoard -> Double
 evaluate board =
   let currentIndex = currentBoardIndex board - 1
    in case winner board of
-        Win X -> 100
-        Win O -> -100
+        Win X -> 1000
+        Win O -> -1000
         Draw -> 0
         Ongoing -> evaluateGame board currentIndex
 
